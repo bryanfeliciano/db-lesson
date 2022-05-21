@@ -22,11 +22,25 @@ data User = User
                 userName :: String
             }
 
+class FromRow a where
+    fromRow :: RowParser a
+
 instance Show User where
     show user = mconcat [show $ userId user , ".) ", userName user]
 
 instance Show Tool where
     show tool = mconcat [show $ toolId tool, ".) ", name tool , "\n description : ", description tool, "\n last returned: ", show $ lastReturned tool, "\n times borrowed: " , show $ timesBorrowed tool, "\n"]
+
+instance FromRow User where
+    fromRow = User <$> field
+                   <*> field
+
+instance FromRow Tool where
+    fromRow :: Tool <$> field
+                    <*> field
+                    <*> field
+                    <*> field
+                    <*> field
 
 addUser :: String -> IO()
 addUser userName = do
@@ -41,6 +55,9 @@ withConn dbName action = do
      conn <- open dbName
      action conn
      close conn
+
+query :: (FromRow r, ToRow q) => Connection -> Query -> q -> IO [r]
+query_ :: FromRow r => Connection -> Query -> IO [r]
 
 main :: IO ()
 main = print "db-lesson"

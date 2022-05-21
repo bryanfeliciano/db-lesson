@@ -104,17 +104,57 @@ updateTool tool date = tool
 
 updateOrWarn :: Maybe Tool -> IO ()
 updateOrWarn Nothing = print "id not found"
-                       updateOrWarn (Just tool) = withConn "tools.db" $
+updateOrWarn (Just tool) = withConn "tools.db" $
                         \conn -> do
                         let q = mconcat ["UPDATE TOOLS SET "
-                        ,"lastReturned = ?,"
-                        ," timesBorrowed = ? "
-                        ,"WHERE ID = ?;"]
+                                        ,"lastReturned = ?,"
+                                        ," timesBorrowed = ? "
+                                        ,"WHERE ID = ?;"]
                         execute conn q (lastReturned tool
-                        , timesBorrowed tool
-                        , toolId tool)
+                                       , timesBorrowed tool
+                                       , toolId tool)
                         print "tool updated"
 
+updateToolTable :: Int -> IO ()
+updateToolTable toolId = withConn "tools.db" $
+                        \conn -> do
+                         tool <- selectTool conn toolId
+                         currentDay <- utctDay <$> getCurrentTime
+                         let updatedTool = updateTool <$> tool
+                                                      <*> pure currentDay
+                         updateOrWarn updatedTool
+
+checkin :: Int -> IO ()
+checkin toolId = withConn "tools.db" $
+                \conn -> do
+                    execute conn
+                        "DELETE FROM checkedout WHERE tool_id = (?);"
+                        (Only toolId)
+
+checkinAndUpdate :: Int -> IO ()
+checkinAndUpdate toolId = do
+    checkin toolId
+    updateToolTable toolId
+
+promptAndAddUser :: IO ()
+promptAndAddUser = do
+      print "Enter new user name"
+      userName <- getLine
+      addUser userName
+    
+promptAndCheckout :: IO ()
+promptAndCheckout = do
+      print "Enter the id of the user"
+      userId <- pure read <*> getLine
+      print "Enter the id of the tool"
+      toolId <- pure read <*> getLine
+      checkout userId toolId
+    
+promptAndCheckin :: IO ()
+promptAndCheckin = do
+      print "enter the id of tool"
+      toolId <- pure read <*> getLine
+      checkinAndUpdate toolId
 
 main :: IO ()
 main = print "db-lesson"

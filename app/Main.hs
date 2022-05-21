@@ -59,5 +59,31 @@ withConn dbName action = do
 query :: (FromRow r, ToRow q) => Connection -> Query -> q -> IO [r]
 query_ :: FromRow r => Connection -> Query -> IO [r]
 
+printUsers :: IO()
+printUsers  = withConn "tools.db" $
+              \conn -> do
+                  resp <- query_ conn "SELECT * FROM users;" :: IO [User]
+                  mapM_ print resp
+
+printToolQuery :: Query -> IO()
+printToolQuery q = withConn "tools.db" $
+                       \conn -> do
+                           resp <- query_ conn q :: IO [Tool]
+                           mapM_ print resp
+
+printTools :: IO ()
+printTools = printToolQuery "SELECT * FROM tools;"
+                           
+printAvailable :: IO ()
+printAvailable = printToolQuery $ mconcat [ "select * from tools "
+                                          , "where id not in "
+                                          , "(select tool_id from checkedout);"]
+                           
+printCheckedout :: IO ()
+printCheckedout = printToolQuery $
+                            mconcat [ "select * from tools "
+                                    , "where id in "
+                                    , "(select tool_id from checkedout);"]
+
 main :: IO ()
 main = print "db-lesson"
